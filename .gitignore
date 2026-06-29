@@ -1,0 +1,52 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!example.env
+.env.local
+secrets.json
+*_secret*
+*_key*
+
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# Local databases and generated runtime files
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Local invoice/sample data
+1000+ PDF_Invoice_Folder/
+demo_output/
+*.demo.json
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
