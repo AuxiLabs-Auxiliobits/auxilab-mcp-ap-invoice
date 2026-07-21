@@ -61,4 +61,4 @@ docker compose exec postgres createdb -U ap ap_invoice_test
 4. Open a PR describing the change and the motivation.
 
 By contributing you agree your contributions are licensed under the project's
-[Apache-2.0](./LICENSE) license.
+[MIT](./LICENSE) license.

@@ -102,7 +102,10 @@ async def spend_by_month(
     date_to: date | None = None,
 ) -> list[dict[str, Any]]:
     """Total spend and invoice count per calendar month (by invoice_date)."""
-    month = func.to_char(func.date_trunc("month", Invoice.invoice_date), "YYYY-MM")
+    if db.get_bind().dialect.name == "sqlite":
+        month = func.strftime("%Y-%m", Invoice.invoice_date)
+    else:
+        month = func.to_char(func.date_trunc("month", Invoice.invoice_date), "YYYY-MM")
     stmt = (
         select(month.label("month"), func.count(Invoice.id), _SUM)
         .where(Invoice.organization_id == org_id, Invoice.invoice_date.is_not(None))

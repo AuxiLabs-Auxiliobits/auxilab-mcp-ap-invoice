@@ -17,11 +17,10 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ap_invoice.core.enums import VendorStatus
-from ap_invoice.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, str_enum
+from ap_invoice.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, json_doc, str_enum
 
 if TYPE_CHECKING:
     from ap_invoice.models.invoice import Invoice
@@ -45,7 +44,7 @@ class Vendor(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     canonical_name: Mapped[str] = mapped_column(String(255), nullable=False)
     display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Known alternate spellings used by the Vendor Name Normaliser.
-    aliases: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    aliases: Mapped[list[str]] = mapped_column(json_doc(), nullable=False, default=list)
     tax_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     email: Mapped[str | None] = mapped_column(String(320), nullable=True)
     status: Mapped[VendorStatus] = mapped_column(
@@ -103,7 +102,7 @@ class VendorPolicy(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     # --- Validation rules ---
     # Field names that MUST be present for an invoice to be processed.
-    mandatory_fields: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    mandatory_fields: Mapped[list[str]] = mapped_column(json_doc(), nullable=False, default=list)
     min_completeness_score: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), nullable=False, default=Decimal("100.00")
     )
@@ -123,7 +122,7 @@ class VendorPolicy(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     # --- Freeform contractual terms & conditions (structured JSON) ---
     terms_and_conditions: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict
+        json_doc(), nullable=False, default=dict
     )
 
     effective_from: Mapped[date | None] = mapped_column(Date, nullable=True)

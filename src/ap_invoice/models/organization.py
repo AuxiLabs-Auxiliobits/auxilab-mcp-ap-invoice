@@ -6,10 +6,10 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ap_invoice.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from ap_invoice.db.base import Base, TimestampMixin, TZDateTime, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from ap_invoice.models.invoice import Invoice
@@ -62,9 +62,9 @@ class ApiKey(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     prefix: Mapped[str] = mapped_column(String(16), nullable=False, unique=True, index=True)
     key_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(TZDateTime(), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(TZDateTime(), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(TZDateTime(), nullable=True)
 
     organization: Mapped[Organization] = relationship(back_populates="api_keys")
 

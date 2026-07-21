@@ -16,11 +16,10 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ap_invoice.core.enums import ApprovalDecision, ExtractionSource, InvoiceStatus
-from ap_invoice.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, str_enum
+from ap_invoice.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, json_doc, str_enum
 
 if TYPE_CHECKING:
     from ap_invoice.models.audit import ProcessingEvent
@@ -83,9 +82,9 @@ class Invoice(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     # Per-field confidence map, e.g. {"invoice_number": 0.98, "grand_total": 0.91}.
     extraction_confidence: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict
+        json_doc(), nullable=False, default=dict
     )
-    extra_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    extra_metadata: Mapped[dict[str, Any]] = mapped_column(json_doc(), nullable=False, default=dict)
 
     organization: Mapped[Organization] = relationship(back_populates="invoices")
     vendor: Mapped[Vendor | None] = relationship(back_populates="invoices")

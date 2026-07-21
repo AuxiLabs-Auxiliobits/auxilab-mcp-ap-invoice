@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -19,7 +20,29 @@ _engine: AsyncEngine | None = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
 
+def _enable_sqlite_foreign_keys(engine: AsyncEngine) -> None:
+    """SQLite ships with foreign-key enforcement off; turn it on per connection."""
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _fk_pragma(dbapi_connection, _record):  # type: ignore[no-untyped-def]
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+
 def _build_engine(settings: Settings) -> AsyncEngine:
+    if settings.db_is_sqlite:
+        # Standalone mode: a single local file. Pool tuning and pre-ping are
+        # Postgres concerns; NullPool keeps connection lifetimes simple (and
+        # per-event-loop safe under test).
+        engine = create_async_engine(
+            str(settings.database_url),
+            echo=settings.db_echo,
+            poolclass=NullPool,
+            future=True,
+        )
+        _enable_sqlite_foreign_keys(engine)
+        return engine
     if settings.environment == "test":
         # Per-loop test isolation: NullPool opens/closes a connection per use,
         # so no pooled connection outlives the event loop that created it.

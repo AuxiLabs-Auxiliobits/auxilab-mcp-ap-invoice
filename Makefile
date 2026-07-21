@@ -32,6 +32,9 @@ seed: ## Bootstrap the first owner account + API key (usage: make seed EMAIL=you
 demo: ## Run the local end-to-end demo against a running API (needs: make run-api)
 	$(UV) run python scripts/demo.py
 
+demo-reset: ## Reset the DB to the pristine demo state (same API key, fresh demo/invoices/)
+	$(UV) run python scripts/seed_demo.py
+
 revision: ## Autogenerate a migration (usage: make revision m="message")
 	$(UV) run alembic revision --autogenerate -m "$(m)"
 
@@ -54,8 +57,9 @@ test-int: ## Run integration tests (requires Postgres running)
 test-cov: ## Run the full suite with coverage
 	$(UV) run pytest --cov --cov-report=term-missing
 
-run-api: ## Run the REST API locally with autoreload
-	$(UV) run uvicorn ap_invoice.api.main:app --reload --host 127.0.0.1 --port 8000
+run-api: ## Run the REST API locally with autoreload (port from AP_API_PORT in .env, default 8000)
+	$(UV) run uvicorn ap_invoice.api.main:app --reload --host 127.0.0.1 \
+		--port $$( { [ -f .env ] && sed -n 's/^AP_API_PORT=//p' .env | head -1; } | grep . || echo 8000)
 
 run-mcp: ## Run the MCP server locally
 	$(UV) run ap-invoice-mcp

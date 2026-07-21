@@ -12,11 +12,16 @@ orchestrator's secret store. See [`.env.example`](../.env.example).
 | `AP_LOG_JSON` | `true` | JSON logs (prod) vs. console logs (dev) |
 
 ## Database
+
+`AP_DATABASE_URL` selects the mode: SQLite (standalone, zero infrastructure —
+the default) or PostgreSQL (production). Driverless DSNs (`postgresql://…`,
+`sqlite://…`) are accepted; the async driver is added automatically.
+
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AP_DATABASE_URL` | `postgresql+asyncpg://ap:ap_password@localhost:5432/ap_invoice` | Async DSN — **must** use the `+asyncpg` driver |
-| `AP_DB_POOL_SIZE` | `10` | |
-| `AP_DB_MAX_OVERFLOW` | `20` | |
+| `AP_DATABASE_URL` | `sqlite+aiosqlite:///./ap_invoice.db` | Async DSN. SQLite file (standalone) or `postgresql+asyncpg://USER:PASS@HOST:5432/DB` |
+| `AP_DB_POOL_SIZE` | `10` | PostgreSQL only |
+| `AP_DB_MAX_OVERFLOW` | `20` | PostgreSQL only |
 | `AP_DB_ECHO` | `false` | log SQL |
 
 ## REST API

@@ -10,7 +10,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import Field, PostgresDsn, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -34,9 +34,12 @@ class Settings(BaseSettings):
     )
 
     # --- Database --------------------------------------------------------
-    database_url: PostgresDsn = Field(
-        default="postgresql+asyncpg://ap:ap_password@localhost:5432/ap_invoice",  # type: ignore[assignment]
-        description="Async SQLAlchemy DSN (must use the asyncpg driver).",
+    # Standalone mode (default): SQLite file next to the app — zero infrastructure.
+    # Production mode: point AP_DATABASE_URL at PostgreSQL, e.g.
+    #   postgresql+asyncpg://USER:PASSWORD@HOST:5432/DBNAME
+    database_url: str = Field(
+        default="sqlite+aiosqlite:///./ap_invoice.db",
+        description="Async SQLAlchemy DSN. SQLite (standalone) or PostgreSQL.",
     )
     db_pool_size: int = 10
     db_max_overflow: int = 20
@@ -173,6 +176,24 @@ class Settings(BaseSettings):
         description="LLM-extracted invoices below this per-field confidence are held for review.",
     )
 
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, value: str) -> str:
+        """Accept driverless DSNs and pin the async driver the app requires."""
+        value = value.strip()
+        if value.startswith("postgres://"):  # legacy scheme (Heroku-style)
+            value = value.replace("postgres://", "postgresql://", 1)
+        if value.startswith("postgresql://"):
+            value = value.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if value.startswith("sqlite://"):
+            value = value.replace("sqlite://", "sqlite+aiosqlite://", 1)
+        if not value.startswith(("postgresql+asyncpg://", "sqlite+aiosqlite://")):
+            raise ValueError(
+                "AP_DATABASE_URL must be a PostgreSQL DSN (postgresql+asyncpg://...) "
+                "or a SQLite DSN (sqlite+aiosqlite:///path/to.db)."
+            )
+        return value
+
     @field_validator("cors_allow_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
@@ -192,6 +213,11 @@ class Settings(BaseSettings):
         if self.email_backend == "smtp" and not self.smtp_host:
             raise ValueError("AP_EMAIL_BACKEND=smtp requires AP_SMTP_HOST to be set.")
         return self
+
+    @property
+    def db_is_sqlite(self) -> bool:
+        """True when running in standalone (SQLite) mode."""
+        return self.database_url.startswith("sqlite")
 
     @property
     def is_production(self) -> bool:

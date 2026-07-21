@@ -2,8 +2,10 @@
 
 > Production-grade, open-source backend that lets AI agents automate **Accounts Payable invoice processing** — extract, validate, de-duplicate, and approve or flag invoices against **per-vendor policies** — via a clean REST API and a **Model Context Protocol (MCP)** server.
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
+
+📊 **[View the presentation](https://docs.google.com/presentation/d/1jPKqecMXvHUr1msQLog4K370QdI0RTKA/edit?usp=sharing&ouid=115170061039817732129&rtpof=true&sd=true)**
 
 There is **no frontend** by design. AP Invoice Intelligence is a headless platform: a
 REST API for your systems and an MCP server so AI agents (Claude, or any
@@ -69,27 +71,71 @@ decision written to an immutable audit trail.
 
 ## Tech stack
 
-Python 3.12 · FastAPI · SQLAlchemy 2.0 (async) + Alembic · Pydantic v2 · PostgreSQL ·
+Python 3.12 · FastAPI · SQLAlchemy 2.0 (async) + Alembic · Pydantic v2 ·
+SQLite (standalone) / PostgreSQL (production) ·
 MCP Python SDK (FastMCP, streamable-HTTP + stdio) · Anthropic SDK · structlog ·
-pytest / ruff / mypy · Docker.
+pytest / ruff / mypy · Docker (optional).
 
 ## Quickstart
 
-### Prerequisites
-- [`uv`](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
-- Docker (for PostgreSQL)
+Two database modes, selected by a single `.env` variable (`AP_DATABASE_URL`):
 
-### Local development
+| Mode | Database | Infrastructure | Best for |
+|---|---|---|---|
+| **Standalone** (default) | SQLite file | **None** — no Docker | Trying the tool, local dev, demos |
+| **PostgreSQL** | Postgres 16 | Docker or a managed DB | Production, multi-instance, heavy concurrency |
 
-**One command** — installs `uv`, dependencies, generates a `.env` with secrets,
-starts Postgres, runs migrations, seeds a demo org + API key, **runs the full
-test suite, and runs a live end-to-end demo**:
+### Standalone mode (zero infrastructure — default)
+
+Just Python and [`uv`](https://docs.astral.sh/uv/)
+(`curl -LsSf https://astral.sh/uv/install.sh | sh`). No Docker, no database
+server — a SQLite file (`ap_invoice.db`) is created automatically.
+
+**One command** — installs dependencies, generates a `.env` with secrets, runs
+migrations, seeds a demo org + API key, **runs the full test suite, and runs a
+live end-to-end demo**:
 
 ```bash
 ./scripts/setup.sh --all      # or: make setup
 ```
 
 (Use `./scripts/setup.sh` alone for setup only, or `--seed` to just add demo data.)
+
+<details>
+<summary>Setup script options (or run <code>./scripts/setup.sh -i</code> for interactive prompts)</summary>
+
+| Option | Description | Default |
+|---|---|---|
+| `--sqlite` / `--postgres` | Standalone SQLite, or PostgreSQL via Docker | `--sqlite` |
+| `--db-url <URL>` | External database DSN (managed Postgres, or a SQLite path) | — |
+| `--llm <provider>` | `claude` \| `openai` \| `gemini` | `claude` |
+| `--llm-key <key>` | API key for the chosen provider | env var |
+| `--api-port <n>` / `--mcp-port <n>` | REST API / MCP server ports | `8000` / `8080` |
+| `--email-backend <mode>` | `console` (OTP logged) or `smtp` | `console` |
+| `--seed` / `--seed-email <email>` | Create a demo org + API key | off |
+| `--verify` | Run the full test suite after setup | off |
+| `--demo` | Run the live end-to-end demo | off |
+| `--all` | `--seed --verify --demo` | off |
+| `-i`, `--interactive` | Prompt for all the choices above | off |
+
+Configuration options apply when `.env` is first created; an existing `.env` is
+never overwritten — edit it directly instead. `./scripts/setup.sh --help` shows
+the full reference.
+</details>
+
+<details>
+<summary>Prefer doing it by hand? It's four commands.</summary>
+
+```bash
+uv sync                                          # deps into a uv venv
+cp .env.example .env                             # then set AP_API_KEY_PEPPER & AP_JWT_SECRET
+uv run alembic upgrade head                      # create the SQLite schema
+# Optional: bootstrap the first owner directly (otherwise use /auth/register below):
+uv run python scripts/seed.py --email you@example.com   # prints login + an API key
+```
+`AP_DATABASE_URL` defaults to `sqlite+aiosqlite:///./ap_invoice.db` — nothing to
+configure for SQLite.
+</details>
 
 Then run the services:
 
@@ -98,18 +144,28 @@ make run-api     # REST API  → http://127.0.0.1:8000/docs
 make run-mcp     # MCP server → http://127.0.0.1:8080/mcp
 ```
 
-<details>
-<summary>Manual setup (if you prefer step-by-step)</summary>
+### PostgreSQL mode
+
+For production or anything multi-instance. Requires Docker (for the bundled
+Postgres) or any managed Postgres (RDS, Cloud SQL, Neon, Supabase, ...):
 
 ```bash
-make install                                   # deps into a uv venv
-make db-up                                      # start PostgreSQL
-cp .env.example .env                            # then set AP_API_KEY_PEPPER & AP_JWT_SECRET
-make migrate                                     # apply migrations
-# Optional: bootstrap the first owner directly (otherwise use /auth/register below):
-uv run python scripts/seed.py --email you@example.com   # prints login + an API key
+./scripts/setup.sh --all --postgres    # same one-command setup, Postgres via Docker
 ```
-</details>
+
+Or point `AP_DATABASE_URL` in `.env` at an existing server and run
+`uv run alembic upgrade head`:
+
+```bash
+AP_DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@HOST:5432/DBNAME
+```
+
+Switching modes later is just changing `AP_DATABASE_URL` and re-running
+migrations — the schema and application code are identical in both modes.
+
+> **Which mode should I use?** SQLite handles one process writing at a time —
+> perfect for evaluation and single-user workloads. Move to Postgres when you
+> deploy for a team or run multiple instances.
 
 ### Create your account (self-service)
 
@@ -212,7 +268,9 @@ docker compose up -d api mcp         # API + MCP only — bundled DB not started
 ```
 `AP_DATABASE_URL` is the single switch: leave it unset to use the bundled Postgres,
 or set your connection string for any external Postgres. Migrations run
-automatically on container start.
+automatically on container start. (The Docker images always run against
+Postgres; standalone SQLite mode is for running the servers directly on the
+host, as in the Quickstart above.)
 
 API → `http://localhost:8000` · MCP → `http://localhost:8080` · OpenAPI docs → `/docs`.
 
@@ -228,7 +286,7 @@ src/ap_invoice/
   api/         FastAPI app, dependencies, routes
   mcp/         FastMCP server exposing the tools
 alembic/       migrations
-tests/         unit/ (no DB) + integration/ (Postgres)
+tests/         unit/ (no DB) + integration/ (SQLite or Postgres)
 docs/          full documentation
 ```
 
@@ -242,4 +300,4 @@ Full docs live in [`docs/`](./docs):
 
 ## License
 
-[Apache-2.0](./LICENSE).
+[MIT](./LICENSE).

@@ -1,7 +1,8 @@
-"""Fixtures for integration tests (require a live PostgreSQL database).
+"""Fixtures for integration tests (require a live database).
 
 The schema is created once per session against ``AP_DATABASE_URL`` (a dedicated
-test database) and dropped afterwards. Each test provisions its own organization
+test database — PostgreSQL by default; a SQLite URL works too) and dropped
+afterwards. Each test provisions its own organization
 so tests are isolated by tenant. The app engine is disposed after every test so
 it re-binds to that test's event loop.
 """

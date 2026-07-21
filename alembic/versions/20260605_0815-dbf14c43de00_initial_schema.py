@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -18,6 +18,11 @@ revision: str = "dbf14c43de00"
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+
+
+def _json_doc() -> sa.JSON:
+    """JSONB on PostgreSQL, generic JSON elsewhere (SQLite standalone mode)."""
+    return sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
 
 
 def upgrade() -> None:
@@ -28,8 +33,8 @@ def upgrade() -> None:
         sa.Column("slug", sa.String(length=120), nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_organizations")),
     )
     op.create_index(op.f("ix_organizations_slug"), "organizations", ["slug"], unique=True)
@@ -43,8 +48,8 @@ def upgrade() -> None:
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(
             ["organization_id"],
             ["organizations.id"],
@@ -62,14 +67,14 @@ def upgrade() -> None:
         sa.Column("organization_id", sa.Uuid(), nullable=False),
         sa.Column("canonical_name", sa.String(length=255), nullable=False),
         sa.Column("display_name", sa.String(length=255), nullable=True),
-        sa.Column("aliases", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("aliases", _json_doc(), nullable=False),
         sa.Column("tax_id", sa.String(length=64), nullable=True),
         sa.Column("email", sa.String(length=320), nullable=True),
         sa.Column("status", sa.String(length=20), nullable=False),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(
             ["organization_id"],
             ["organizations.id"],
@@ -103,11 +108,11 @@ def upgrade() -> None:
         sa.Column("recommended_action", sa.String(length=20), nullable=True),
         sa.Column("completeness_score", sa.Numeric(precision=5, scale=2), nullable=True),
         sa.Column("extraction_source", sa.String(length=20), nullable=True),
-        sa.Column("extraction_confidence", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-        sa.Column("extra_metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("extraction_confidence", _json_doc(), nullable=False),
+        sa.Column("extra_metadata", _json_doc(), nullable=False),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(
             ["organization_id"],
             ["organizations.id"],
@@ -142,18 +147,18 @@ def upgrade() -> None:
         sa.Column("payment_terms", sa.String(length=64), nullable=False),
         sa.Column("currency", sa.String(length=3), nullable=False),
         sa.Column("allow_early_payment_discount", sa.Boolean(), nullable=False),
-        sa.Column("mandatory_fields", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("mandatory_fields", _json_doc(), nullable=False),
         sa.Column("min_completeness_score", sa.Numeric(precision=5, scale=2), nullable=False),
         sa.Column("auto_approve_max_amount", sa.Numeric(precision=18, scale=2), nullable=True),
         sa.Column("requires_review_above_amount", sa.Numeric(precision=18, scale=2), nullable=True),
         sa.Column("amount_tolerance_pct", sa.Numeric(precision=5, scale=2), nullable=False),
         sa.Column("duplicate_lookback_days", sa.Integer(), nullable=False),
-        sa.Column("terms_and_conditions", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("terms_and_conditions", _json_doc(), nullable=False),
         sa.Column("effective_from", sa.Date(), nullable=True),
         sa.Column("effective_to", sa.Date(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(
             ["vendor_id"],
             ["vendors.id"],
@@ -175,8 +180,8 @@ def upgrade() -> None:
         sa.Column("unit_price", sa.Numeric(precision=18, scale=4), nullable=True),
         sa.Column("line_total", sa.Numeric(precision=18, scale=2), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(
             ["invoice_id"],
             ["invoices.id"],
@@ -197,11 +202,11 @@ def upgrade() -> None:
         sa.Column("tool_name", sa.String(length=100), nullable=True),
         sa.Column("decision", sa.String(length=40), nullable=True),
         sa.Column("message", sa.Text(), nullable=True),
-        sa.Column("details", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("details", _json_doc(), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
+            server_default=sa.func.now(),
             nullable=False,
         ),
         sa.Column("id", sa.Uuid(), nullable=False),

@@ -1,8 +1,9 @@
 """Alembic migration environment (async).
 
-Runs migrations through the application's async engine so a single asyncpg DSN
-works for both the app and migrations. The target metadata is the shared
-``Base.metadata`` with every model imported, enabling ``--autogenerate``.
+Runs migrations through the application's async engine so the same DSN
+(``AP_DATABASE_URL`` — SQLite standalone or PostgreSQL) works for both the app
+and migrations. The target metadata is the shared ``Base.metadata`` with every
+model imported, enabling ``--autogenerate``.
 """
 
 from __future__ import annotations
@@ -14,10 +15,9 @@ from alembic import context
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from ap_invoice.core.config import get_settings
-
 # Import models so their tables are registered on Base.metadata.
-import ap_invoice.models  # noqa: F401
+import ap_invoice.models
+from ap_invoice.core.config import get_settings
 from ap_invoice.db.base import Base
 
 config = context.config

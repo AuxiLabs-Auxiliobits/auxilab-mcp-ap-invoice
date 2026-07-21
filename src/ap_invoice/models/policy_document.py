@@ -6,7 +6,7 @@ typed rules into :class:`PolicyRule`. Enforcement at invoice time uses the
 *structured rules* (deterministic) — never the raw document — which keeps
 decisions reproducible, auditable, and safe from prompt injection.
 
-Embeddings are stored as JSONB float arrays with cosine similarity computed in
+Embeddings are stored as JSON float arrays with cosine similarity computed in
 application code (the candidate set is scoped per vendor, so it stays small).
 For large-scale deployments, swap this for a pgvector column.
 """
@@ -17,11 +17,10 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ap_invoice.core.enums import DocumentStatus, PolicyRuleStatus, PolicyRuleType
-from ap_invoice.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, str_enum
+from ap_invoice.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, json_doc, str_enum
 
 if TYPE_CHECKING:
     from ap_invoice.models.vendor import Vendor
@@ -65,7 +64,7 @@ class PolicyChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     # Embedding vector as a JSON float array (cosine computed in app code).
-    embedding: Mapped[list[float]] = mapped_column(JSONB, nullable=False, default=list)
+    embedding: Mapped[list[float]] = mapped_column(json_doc(), nullable=False, default=list)
     embedding_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     document: Mapped[VendorDocument] = relationship(back_populates="chunks")
@@ -92,7 +91,7 @@ class PolicyRule(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     rule_type: Mapped[PolicyRuleType] = mapped_column(
         str_enum(PolicyRuleType, length=40), nullable=False
     )
-    parameters: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    parameters: Mapped[dict[str, Any]] = mapped_column(json_doc(), nullable=False, default=dict)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_quote: Mapped[str | None] = mapped_column(Text, nullable=True)
     confidence: Mapped[float | None] = mapped_column(nullable=True)

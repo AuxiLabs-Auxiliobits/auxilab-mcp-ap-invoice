@@ -12,12 +12,11 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ap_invoice.core.enums import ProcessingEventType
-from ap_invoice.db.base import Base, UUIDPrimaryKeyMixin, str_enum
+from ap_invoice.db.base import Base, TZDateTime, UUIDPrimaryKeyMixin, json_doc, str_enum
 
 if TYPE_CHECKING:
     from ap_invoice.models.invoice import Invoice
@@ -47,10 +46,10 @@ class ProcessingEvent(UUIDPrimaryKeyMixin, Base):
     decision: Mapped[str | None] = mapped_column(String(40), nullable=True)
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Full structured payload of the check/result for reproducibility.
-    details: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    details: Mapped[dict[str, Any]] = mapped_column(json_doc(), nullable=False, default=dict)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
+        TZDateTime(),
         server_default=func.now(),
         nullable=False,
         index=True,

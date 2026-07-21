@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
+from sqlalchemy import JSON, DateTime, MetaData, TypeDecorator, func
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import MetaData, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # Deterministic constraint names keep Alembic autogenerate diffs stable and make
@@ -25,6 +26,38 @@ class Base(DeclarativeBase):
     """Declarative base shared by all ORM models."""
 
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
+
+
+class TZDateTime(TypeDecorator[datetime]):
+    """Timezone-aware datetime that survives backends without tz storage.
+
+    PostgreSQL stores TIMESTAMPTZ natively. SQLite keeps only the clock time,
+    so values are normalised to UTC on write and the UTC tzinfo is re-attached
+    on read — without this, ``aware < naive`` comparisons raise TypeError in
+    standalone mode.
+    """
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_bind_param(self, value: datetime | None, dialect: object) -> datetime | None:
+        if value is not None and value.tzinfo is not None:
+            return value.astimezone(UTC)
+        return value
+
+    def process_result_value(self, value: datetime | None, dialect: object) -> datetime | None:
+        if value is not None and value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
+
+
+def json_doc() -> JSON:
+    """Portable JSON document column: JSONB on PostgreSQL, generic JSON elsewhere.
+
+    SQLite (standalone mode) stores JSON as TEXT with the same read/write
+    semantics; Postgres keeps the binary JSONB representation and its operators.
+    """
+    return JSON().with_variant(JSONB(), "postgresql")
 
 
 def str_enum(enum_cls: type[enum.Enum], *, length: int) -> SAEnum:

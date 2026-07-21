@@ -6,10 +6,10 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ap_invoice.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from ap_invoice.db.base import Base, TimestampMixin, TZDateTime, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from ap_invoice.models.organization import Organization
@@ -33,7 +33,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(TZDateTime(), nullable=True)
 
     organization: Mapped[Organization] = relationship(back_populates="users")
     verifications: Mapped[list[EmailVerification]] = relationship(
@@ -57,8 +57,8 @@ class EmailVerification(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         index=True,
     )
     code_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(TZDateTime(), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(TZDateTime(), nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     user: Mapped[User] = relationship(back_populates="verifications")

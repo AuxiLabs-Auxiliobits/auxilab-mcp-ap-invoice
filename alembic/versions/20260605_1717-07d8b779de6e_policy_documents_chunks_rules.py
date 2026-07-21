@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -18,6 +18,11 @@ revision: str = "07d8b779de6e"
 down_revision: str | None = "dbf14c43de00"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+
+
+def _json_doc() -> sa.JSON:
+    """JSONB on PostgreSQL, generic JSON elsewhere (SQLite standalone mode)."""
+    return sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
 
 
 def upgrade() -> None:
@@ -43,8 +48,8 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(
             ["organization_id"],
             ["organizations.id"],
@@ -74,11 +79,11 @@ def upgrade() -> None:
         sa.Column("vendor_id", sa.Uuid(), nullable=False),
         sa.Column("chunk_index", sa.Integer(), nullable=False),
         sa.Column("text", sa.Text(), nullable=False),
-        sa.Column("embedding", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("embedding", _json_doc(), nullable=False),
         sa.Column("embedding_model", sa.String(length=100), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(
             ["document_id"],
             ["vendor_documents.id"],
@@ -120,7 +125,7 @@ def upgrade() -> None:
             ),
             nullable=False,
         ),
-        sa.Column("parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("parameters", _json_doc(), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("source_quote", sa.Text(), nullable=True),
         sa.Column("confidence", sa.Float(), nullable=True),
@@ -137,8 +142,8 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(
             ["document_id"],
             ["vendor_documents.id"],
