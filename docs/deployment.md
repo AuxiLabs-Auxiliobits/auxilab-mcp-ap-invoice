@@ -1,5 +1,11 @@
 # Deployment
 
+Two database modes (see the README Quickstart): **standalone SQLite** for
+running the servers directly on a host with zero infrastructure, and
+**PostgreSQL** for production. Everything below deploys the production
+PostgreSQL stack; for standalone mode just run `./scripts/setup.sh` and
+`make run-api` / `make run-mcp` on the host.
+
 ## Docker Compose (self-hosted)
 
 The included `docker-compose.yml` runs Postgres, the API, and the MCP server.

@@ -3,6 +3,11 @@
 All tables use UUID primary keys and (except the audit trail) `created_at` /
 `updated_at` timestamps maintained by the database.
 
+Column types are portable across both supported backends: `JSON` columns are
+stored as JSONB on PostgreSQL and as TEXT-backed JSON on SQLite (standalone
+mode); timezone-aware datetimes are normalised to UTC so they behave
+identically on both.
+
 ```
 organizations ──1:N── api_keys
       │
@@ -44,7 +49,7 @@ A supplier in the organization's vendor master.
 | `organization_id` | UUID | FK |
 | `canonical_name` | str(255) | unique per org |
 | `display_name` | str? | |
-| `aliases` | JSONB list | alternate spellings used by the normaliser |
+| `aliases` | JSON list | alternate spellings used by the normaliser |
 | `tax_id`, `email` | str? | |
 | `status` | enum | `active` / `onboarding` / `inactive` |
 
@@ -59,14 +64,14 @@ The rules governing a vendor's invoices. A new version is created on every chang
 | `is_active` | bool | exactly one active per vendor |
 | `payment_terms` | str(64) | e.g. `2/10 Net 30` |
 | `currency` | str(3) | ISO-4217 |
-| `mandatory_fields` | JSONB list | required for completeness |
+| `mandatory_fields` | JSON list | required for completeness |
 | `min_completeness_score` | numeric | threshold to "process" |
 | `auto_approve_max_amount` | numeric? | clean invoices ≤ this auto-approve |
 | `requires_review_above_amount` | numeric? | always hold above this |
 | `amount_tolerance_pct` | numeric | near-duplicate amount tolerance (default 5%) |
 | `duplicate_lookback_days` | int | duplicate search window |
 | `allow_early_payment_discount` | bool | |
-| `terms_and_conditions` | JSONB | freeform structured T&Cs |
+| `terms_and_conditions` | JSON | freeform structured T&Cs |
 | `effective_from` / `effective_to` | date? | |
 
 ## invoices
@@ -87,8 +92,8 @@ An invoice moving through the pipeline.
 | `recommended_action` | enum? | the policy decision |
 | `completeness_score` | numeric? | |
 | `extraction_source` | enum? | `llm` / `deterministic` / `hybrid` / `manual` |
-| `extraction_confidence` | JSONB | per-field confidence |
-| `extra_metadata` | JSONB | arbitrary |
+| `extraction_confidence` | JSON | per-field confidence |
+| `extra_metadata` | JSON | arbitrary |
 
 ## invoice_line_items
 | Column | Type |
@@ -110,5 +115,5 @@ One immutable row per pipeline step and decision. Never updated or deleted.
 | `tool_name` | str? | which tool produced it |
 | `decision` | str? | for decision events |
 | `message` | text? | human-readable summary |
-| `details` | JSONB | full structured result for reproducibility |
+| `details` | JSON | full structured result for reproducibility |
 | `created_at` | datetime | indexed |

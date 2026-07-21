@@ -49,7 +49,9 @@ async with streamablehttp_client("http://localhost:8080/mcp", headers=headers) a
 
 ## Connecting with Claude Desktop (stdio)
 
-Add to your MCP client config (set the env so the server scopes calls to an org):
+Add to your MCP client config (set the env so the server scopes calls to an
+org). The example uses standalone SQLite; point `AP_DATABASE_URL` at a
+`postgresql+asyncpg://` DSN to use PostgreSQL instead:
 
 ```json
 {
@@ -58,7 +60,7 @@ Add to your MCP client config (set the env so the server scopes calls to an org)
       "command": "ap-invoice-mcp",
       "env": {
         "AP_MCP_TRANSPORT": "stdio",
-        "AP_DATABASE_URL": "postgresql+asyncpg://ap:ap_password@localhost:5432/ap_invoice",
+        "AP_DATABASE_URL": "sqlite+aiosqlite:////absolute/path/to/ap_invoice.db",
         "AP_API_KEY_PEPPER": "<your pepper>",
         "AP_MCP_API_KEY": "ap_<prefix>.<secret>"
       }

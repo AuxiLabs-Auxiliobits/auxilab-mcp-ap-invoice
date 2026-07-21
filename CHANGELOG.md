@@ -7,6 +7,25 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Standalone SQLite mode (new default).** The server now runs with **zero
+  infrastructure** — no Docker, no database server. `AP_DATABASE_URL` selects
+  the backend: unset (or `sqlite+aiosqlite:///...`) uses a local SQLite file;
+  a `postgresql+asyncpg://` DSN keeps the production PostgreSQL behaviour
+  unchanged. Driverless DSNs (`postgresql://`, `sqlite://`) are accepted and
+  normalised. Portable column types (`JSON` with a JSONB variant on Postgres,
+  UTC-normalised timezone-aware datetimes), portable migrations, SQLite
+  foreign-key enforcement, and a dialect-aware monthly-spend query make the
+  schema and behaviour identical on both backends.
+- **Configurable one-command setup.** `scripts/setup.sh` now takes options —
+  `--sqlite` / `--postgres` / `--db-url`, `--llm claude|openai|gemini` +
+  `--llm-key`, `--api-port` / `--mcp-port`, `--email-backend`, `--seed-email` —
+  plus `-i/--interactive` for guided prompts. Standalone SQLite is the default
+  path; Docker is only required with `--postgres`.
+
+### Changed
+- **License switched from Apache 2.0 to MIT** (per the project brief); the
+  Apache `NOTICE` file was removed.
+- `make run-api` respects `AP_API_PORT` from `.env` instead of hardcoding 8000.
 - **Richer MCP toolset for agents (10 → 19 tools).** New read tools let an agent
   query any invoice data: `get_invoice` (full detail + line items),
   `get_invoice_audit_trail` (the "why" behind a decision), `search_invoices`

@@ -5,21 +5,20 @@ you set up and explains the workflow.
 
 ## Development setup
 
-Prerequisites: [`uv`](https://docs.astral.sh/uv/) and Docker.
+Prerequisites: [`uv`](https://docs.astral.sh/uv/). Docker is only needed if you
+develop against PostgreSQL (the default dev database is standalone SQLite).
 
 ```bash
 git clone https://github.com/AuxiLabs/auxilab-mcp-ap-invoice
 cd auxilab-mcp-ap-invoice
 
-make install            # create the venv and install deps (incl. dev)
-make db-up              # start PostgreSQL in Docker
-
-cp .env.example .env
-python -c "import secrets; print('AP_API_KEY_PEPPER=' + secrets.token_urlsafe(48))" >> .env
-
-make migrate            # apply migrations
+./scripts/setup.sh      # deps + .env with secrets + SQLite migrations
 make run-api            # http://127.0.0.1:8000/docs
 ```
+
+To develop against PostgreSQL instead (what production runs), use
+`./scripts/setup.sh --postgres`, or by hand: `make db-up`, point
+`AP_DATABASE_URL` in `.env` at it, then `make migrate`.
 
 ## Quality gates
 
@@ -30,10 +29,19 @@ make lint        # ruff
 make format      # ruff format + autofix
 make typecheck   # mypy (strict)
 make test        # unit tests (no DB needed)
-make test-int    # integration tests (needs `make db-up` + a test DB)
+make test-int    # integration tests (needs a database — see below)
 ```
 
-The integration tests use a dedicated `ap_invoice_test` database. Create it once:
+Integration tests run against `AP_DATABASE_URL`. The simplest option is a
+throwaway SQLite file:
+
+```bash
+AP_DATABASE_URL=sqlite+aiosqlite:///./ap_invoice_test.db uv run pytest -m integration
+```
+
+When the variable is unset they default to a dedicated PostgreSQL database
+(`ap_invoice_test`), which is what CI and `./scripts/setup.sh --postgres`
+use. Create it once with:
 
 ```bash
 docker compose exec postgres createdb -U ap ap_invoice_test

@@ -46,7 +46,7 @@ _Process / act_
 | `update_invoice_status` | Set approved / held / flagged / rejected (audited). |
 
 _Calculators_
-| `calculate_payment_terms` (`Net 30`, `2/10 Net 30`, …) · `check_invoice_completeness` · `normalise_vendor_name` · `detect_duplicate_invoice` |
+| `calculate_payment_terms_tool` (`Net 30`, `2/10 Net 30`, …) · `check_invoice_completeness` · `normalise_vendor_name` · `detect_duplicate_invoice` |
 
 _Query any invoice data_
 | Tool | What it does |
@@ -78,31 +78,31 @@ pytest / ruff / mypy · Docker (optional).
 
 ## Quickstart
 
-Two database modes, selected by a single `.env` variable (`AP_DATABASE_URL`):
-
-| Mode | Database | Infrastructure | Best for |
-|---|---|---|---|
-| **Standalone** (default) | SQLite file | **None** — no Docker | Trying the tool, local dev, demos |
-| **PostgreSQL** | Postgres 16 | Docker or a managed DB | Production, multi-instance, heavy concurrency |
-
-### Standalone mode (zero infrastructure — default)
-
-Just Python and [`uv`](https://docs.astral.sh/uv/)
-(`curl -LsSf https://astral.sh/uv/install.sh | sh`). No Docker, no database
-server — a SQLite file (`ap_invoice.db`) is created automatically.
-
-**One command** — installs dependencies, generates a `.env` with secrets, runs
-migrations, seeds a demo org + API key, **runs the full test suite, and runs a
-live end-to-end demo**:
-
 ```bash
-./scripts/setup.sh --all      # or: make setup
+git clone https://github.com/AuxiLabs/auxilab-mcp-ap-invoice
+cd auxilab-mcp-ap-invoice
+./scripts/setup.sh --seed
 ```
 
-(Use `./scripts/setup.sh` alone for setup only, or `--seed` to just add demo data.)
+**That's it — no Docker, no database server, nothing to configure.** The script
+installs [`uv`](https://docs.astral.sh/uv/) if missing, installs dependencies,
+writes a `.env` with generated secrets, creates a local SQLite database, and
+prints a ready-to-use **demo login + API key**.
+
+Start the servers (each in its own shell):
+
+```bash
+make run-api     # REST API  → http://127.0.0.1:8000/docs
+make run-mcp     # MCP server → http://127.0.0.1:8080/mcp
+# no make? use:  uv run ap-invoice-api   /   uv run ap-invoice-mcp
+```
+
+One thing to add before processing invoices: an LLM key in `.env`
+(`AP_ANTHROPIC_API_KEY=sk-ant-...` — or use `openai` / `gemini`, see below).
+Everything else (auth, vendors, policies, search, analytics) works without it.
 
 <details>
-<summary>Setup script options (or run <code>./scripts/setup.sh -i</code> for interactive prompts)</summary>
+<summary><b>Setup options</b> — providers, ports, Postgres, tests… (or just run <code>./scripts/setup.sh -i</code> for interactive prompts)</summary>
 
 | Option | Description | Default |
 |---|---|---|
@@ -115,7 +115,7 @@ live end-to-end demo**:
 | `--seed` / `--seed-email <email>` | Create a demo org + API key | off |
 | `--verify` | Run the full test suite after setup | off |
 | `--demo` | Run the live end-to-end demo | off |
-| `--all` | `--seed --verify --demo` | off |
+| `--all` | `--seed --verify --demo` (recommended first run) | off |
 | `-i`, `--interactive` | Prompt for all the choices above | off |
 
 Configuration options apply when `.env` is first created; an existing `.env` is
@@ -124,7 +124,7 @@ the full reference.
 </details>
 
 <details>
-<summary>Prefer doing it by hand? It's four commands.</summary>
+<summary><b>Manual setup</b> — prefer to see every step? It's four commands.</summary>
 
 ```bash
 uv sync                                          # deps into a uv venv
@@ -137,24 +137,19 @@ uv run python scripts/seed.py --email you@example.com   # prints login + an API 
 configure for SQLite.
 </details>
 
-Then run the services:
+<details>
+<summary><b>PostgreSQL mode</b> — for production or multi-instance deployments</summary>
+
+The default SQLite database is perfect for trying the tool and local dev, but it
+handles one process writing at a time. For production, use PostgreSQL —
+via Docker:
 
 ```bash
-make run-api     # REST API  → http://127.0.0.1:8000/docs
-make run-mcp     # MCP server → http://127.0.0.1:8080/mcp
+./scripts/setup.sh --seed --postgres    # same one-command setup, Postgres via Docker
 ```
 
-### PostgreSQL mode
-
-For production or anything multi-instance. Requires Docker (for the bundled
-Postgres) or any managed Postgres (RDS, Cloud SQL, Neon, Supabase, ...):
-
-```bash
-./scripts/setup.sh --all --postgres    # same one-command setup, Postgres via Docker
-```
-
-Or point `AP_DATABASE_URL` in `.env` at an existing server and run
-`uv run alembic upgrade head`:
+…or any managed Postgres (RDS, Cloud SQL, Neon, Supabase, ...) — point
+`AP_DATABASE_URL` in `.env` at it and run `uv run alembic upgrade head`:
 
 ```bash
 AP_DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@HOST:5432/DBNAME
@@ -162,10 +157,7 @@ AP_DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@HOST:5432/DBNAME
 
 Switching modes later is just changing `AP_DATABASE_URL` and re-running
 migrations — the schema and application code are identical in both modes.
-
-> **Which mode should I use?** SQLite handles one process writing at a time —
-> perfect for evaluation and single-user workloads. Move to Postgres when you
-> deploy for a team or run multiple instances.
+</details>
 
 ### Create your account (self-service)
 

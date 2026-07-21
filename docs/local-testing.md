@@ -6,13 +6,17 @@
 ./scripts/setup.sh --all       # or: make setup
 ```
 
-`--all` installs `uv` + deps, generates `.env` with secrets, starts Postgres,
-runs migrations, seeds a demo org + API key, **runs the full test suite**, and
-**runs the live end-to-end demo** — so you confirm the whole system works in one
-shot. Re-runnable and idempotent (never overwrites `.env`).
+`--all` installs `uv` + deps, generates `.env` with secrets, runs migrations
+against **standalone SQLite** (the default — no Docker needed), seeds a demo org
++ API key, **runs the full test suite**, and **runs the live end-to-end demo** —
+so you confirm the whole system works in one shot. Re-runnable and idempotent
+(never overwrites `.env`).
 
-Flags: `--seed` (demo data), `--verify` (tests), `--demo` (live demo),
-`--no-start` (skip Postgres). Plain `./scripts/setup.sh` does setup only.
+Add `--postgres` to use PostgreSQL via docker compose instead, or `--db-url`
+for an external database. Other flags: `--seed` (demo data), `--verify` (tests),
+`--demo` (live demo), `--llm claude|openai|gemini` + `--llm-key` (provider),
+`--api-port` / `--mcp-port`, `-i` (interactive prompts). Plain
+`./scripts/setup.sh` does setup only; `--help` shows the full reference.
 
 Then run the services, each in its own shell:
 
@@ -44,7 +48,9 @@ unknown vendor (auto-onboard)→ hold         [held]
 
 ```bash
 make test        # unit (no DB)
-make test-int    # integration (needs `make db-up` + the ap_invoice_test database)
+make test-int    # integration (against AP_DATABASE_URL; defaults to the
+                 # ap_invoice_test PostgreSQL DB — or point it at a throwaway
+                 # SQLite file: AP_DATABASE_URL=sqlite+aiosqlite:///./t.db)
 ```
 
 ---

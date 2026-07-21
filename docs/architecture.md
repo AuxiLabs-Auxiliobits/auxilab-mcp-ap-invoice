@@ -33,7 +33,7 @@ to the same pure service layer and deterministic policy engine.
                 └───────────────┬───────────────────────────────┘
                                 │  SQLAlchemy 2.0 (async)
                 ┌───────────────┴───────────────────────────────┐
-                │  PostgreSQL                                    │
+                │  SQLite (standalone) / PostgreSQL (production) │
                 │   orgs · api_keys · vendors · policies ·       │
                 │   invoices · line_items · processing_events    │
                 └───────────────────────────────────────────────┘
