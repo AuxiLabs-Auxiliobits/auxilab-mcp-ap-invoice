@@ -14,6 +14,7 @@ from app.core.responses import error_response, step_result
 from app.schemas.tool_requests import InvoiceToolRequest
 from app.services.gemini_service import GeminiService
 from app.services.invoice_inputs import InvoiceInputResolver, ResolvedInvoiceInput
+from app.services.number_parser import coerce_float
 from app.tools.completeness_checker import CompletenessChecker
 from app.tools.duplicate_detector import DuplicateDetector
 from app.tools.payment_terms import PaymentTermsCalculator
@@ -93,7 +94,10 @@ class InvoiceProcessor:
             raw_bytes=raw_bytes,
         )
         resolved = self.resolve_input(request)
-        return self.gemini.extract_from_resolved(resolved)
+        try:
+            return self.gemini.extract_from_resolved(resolved)
+        finally:
+            resolved.cleanup()
 
     def extract_with_details(
         self,
@@ -118,11 +122,14 @@ class InvoiceProcessor:
             raw_bytes=raw_bytes,
         )
         resolved = self.resolve_input(request)
-        invoice = self.gemini.extract_from_resolved(resolved)
-        return {
-            "invoice": invoice,
-            "resolved": resolved,
-        }
+        try:
+            invoice = self.gemini.extract_from_resolved(resolved)
+            return {
+                "invoice": invoice,
+                "resolved": resolved,
+            }
+        finally:
+            resolved.cleanup()
 
     def process(
         self,
@@ -330,14 +337,14 @@ class InvoiceProcessor:
             else (payment_terms or DEFAULT_PAYMENT_TERMS)
         )
         invoice_date = str(invoice.invoice_date.value or "").strip()
-        amount = invoice.grand_total.value
+        amount = coerce_float(invoice.grand_total.value)
 
         if invoice_date and amount is not None:
             try:
                 payment_terms_result = self.payment_terms_calculator.calculate(
                     invoice_date=invoice_date,
                     payment_terms=terms,
-                    invoice_amount=float(amount),
+                    invoice_amount=amount,
                 )
                 steps.append(
                     step_result(

@@ -12,6 +12,7 @@ from app.core.responses import error_response, success_response
 from app.database.bootstrap import initialize_database
 from app.database.database import SessionLocal
 from app.services.invoice_processor import InvoiceProcessor
+from app.services.number_parser import coerce_float
 from app.tools.completeness_checker import CompletenessChecker
 from app.tools.duplicate_detector import DuplicateDetector
 from app.tools.payment_terms import PaymentTermsCalculator
@@ -157,7 +158,11 @@ def calculate_payment_terms(
 
     try:
         calculator = PaymentTermsCalculator()
-        result = calculator.calculate(invoice_date, payment_terms, invoice_amount)
+        result = calculator.calculate(
+            invoice_date,
+            payment_terms,
+            coerce_float(invoice_amount) if invoice_amount is not None else invoice_amount,
+        )
         return success_response(step="calculate_payment_terms", data=result)
     except ValueError as exc:
         return _tool_error("calculate_payment_terms", exc)

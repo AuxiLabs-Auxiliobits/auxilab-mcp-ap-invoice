@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from sqlalchemy import func
@@ -41,6 +42,14 @@ class InvoiceRepository:
         due_date: str | None,
         subtotal: float | None,
         tax: float | None,
+        discount_percentage: float | None = None,
+        discount_amount: float | None = None,
+        shipping_charges: float | None = None,
+        freight_charges: float | None = None,
+        handling_charges: float | None = None,
+        insurance_charges: float | None = None,
+        packaging_charges: float | None = None,
+        other_charges: list[dict[str, Any]] | None = None,
         grand_total: float | None,
         status: str = "Processed",
     ) -> ProcessedInvoice:
@@ -55,6 +64,18 @@ class InvoiceRepository:
             due_date=due_date,
             subtotal=subtotal,
             tax=tax,
+            discount_percentage=discount_percentage,
+            discount_amount=discount_amount,
+            shipping_charges=shipping_charges,
+            freight_charges=freight_charges,
+            handling_charges=handling_charges,
+            insurance_charges=insurance_charges,
+            packaging_charges=packaging_charges,
+            other_charges_json=(
+                json.dumps(other_charges, ensure_ascii=False)
+                if other_charges is not None
+                else None
+            ),
             grand_total=grand_total,
             status=status,
         )
@@ -66,4 +87,3 @@ class InvoiceRepository:
         except SQLAlchemyError:
             self.db.rollback()
             raise
-

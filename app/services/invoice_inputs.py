@@ -24,7 +24,15 @@ INVOICE_FIELD_HINTS = {
     "tax",
     "grand_total",
     "discount",
+    "discount_amount",
+    "discount_percentage",
     "shipping",
+    "shipping_charges",
+    "freight_charges",
+    "handling_charges",
+    "insurance_charges",
+    "packaging_charges",
+    "other_charges",
     "balance_due",
     "purchase_order",
     "order_id",
@@ -686,4 +694,3 @@ class InvoiceInputResolver:
             if original_key is not None:
                 return payload.get(original_key)
         return None
-

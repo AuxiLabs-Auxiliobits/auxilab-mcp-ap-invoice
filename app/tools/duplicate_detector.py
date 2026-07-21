@@ -13,6 +13,7 @@ from app.config import (
 from app.core.logging import get_logger
 from app.repositories.invoice_repository import InvoiceRepository
 from app.schemas.invoice import InvoiceData
+from app.services.number_parser import coerce_float
 from app.services.fuzzy_match import FuzzyMatcher
 from app.tools.payment_terms import PaymentTermsCalculator
 
@@ -25,6 +26,12 @@ class DuplicateDetector:
         self.db = db
         self.repository = InvoiceRepository(db)
 
+    def _coerce_numeric(self, value: Any, *, allow_percent: bool = False) -> float | None:
+        try:
+            return coerce_float(value, allow_percent=allow_percent)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Could not convert numeric value: {value!r}") from exc
+
     def _coerce_invoice(
         self,
         invoice: InvoiceData | None = None,
@@ -36,6 +43,14 @@ class DuplicateDetector:
         due_date: str | None = None,
         subtotal: float | None = None,
         tax: float | None = None,
+        discount_percentage: float | None = None,
+        discount_amount: float | None = None,
+        shipping_charges: float | None = None,
+        freight_charges: float | None = None,
+        handling_charges: float | None = None,
+        insurance_charges: float | None = None,
+        packaging_charges: float | None = None,
+        other_charges: list[dict[str, Any]] | None = None,
         grand_total: float | None = None,
     ) -> InvoiceData:
         if invoice is not None:
@@ -49,6 +64,14 @@ class DuplicateDetector:
                     due_date,
                     subtotal,
                     tax,
+                    discount_percentage,
+                    discount_amount,
+                    shipping_charges,
+                    freight_charges,
+                    handling_charges,
+                    insurance_charges,
+                    packaging_charges,
+                    other_charges,
                     grand_total,
                 )
             ):
@@ -63,11 +86,41 @@ class DuplicateDetector:
                 if due_date is not None:
                     payload["due_date"]["value"] = due_date
                 if subtotal is not None:
-                    payload["subtotal"]["value"] = subtotal
+                    payload["subtotal"]["value"] = self._coerce_numeric(subtotal)
                 if tax is not None:
-                    payload["tax"]["value"] = tax
+                    payload["tax"]["value"] = self._coerce_numeric(tax)
+                if discount_percentage is not None:
+                    payload["discount_percentage"]["value"] = self._coerce_numeric(
+                        discount_percentage, allow_percent=True
+                    )
+                if discount_amount is not None:
+                    payload["discount_amount"]["value"] = self._coerce_numeric(
+                        discount_amount
+                    )
+                if shipping_charges is not None:
+                    payload["shipping_charges"]["value"] = self._coerce_numeric(
+                        shipping_charges
+                    )
+                if freight_charges is not None:
+                    payload["freight_charges"]["value"] = self._coerce_numeric(
+                        freight_charges
+                    )
+                if handling_charges is not None:
+                    payload["handling_charges"]["value"] = self._coerce_numeric(
+                        handling_charges
+                    )
+                if insurance_charges is not None:
+                    payload["insurance_charges"]["value"] = self._coerce_numeric(
+                        insurance_charges
+                    )
+                if packaging_charges is not None:
+                    payload["packaging_charges"]["value"] = self._coerce_numeric(
+                        packaging_charges
+                    )
+                if other_charges is not None:
+                    payload["other_charges"] = other_charges
                 if resolved_total is not None:
-                    payload["grand_total"]["value"] = resolved_total
+                    payload["grand_total"]["value"] = self._coerce_numeric(resolved_total)
                 return InvoiceData.model_validate(payload)
             return invoice
 
@@ -92,9 +145,19 @@ class DuplicateDetector:
                 "vendor_name": _field(vendor_name),
                 "invoice_date": _field(invoice_date),
                 "due_date": _field(due_date),
-                "subtotal": _field(subtotal),
-                "tax": _field(tax),
-                "grand_total": _field(resolved_total),
+                "subtotal": _field(self._coerce_numeric(subtotal)),
+                "tax": _field(self._coerce_numeric(tax)),
+                "discount_percentage": _field(
+                    self._coerce_numeric(discount_percentage, allow_percent=True)
+                ),
+                "discount_amount": _field(self._coerce_numeric(discount_amount)),
+                "shipping_charges": _field(self._coerce_numeric(shipping_charges)),
+                "freight_charges": _field(self._coerce_numeric(freight_charges)),
+                "handling_charges": _field(self._coerce_numeric(handling_charges)),
+                "insurance_charges": _field(self._coerce_numeric(insurance_charges)),
+                "packaging_charges": _field(self._coerce_numeric(packaging_charges)),
+                "other_charges": other_charges or [],
+                "grand_total": _field(self._coerce_numeric(resolved_total)),
                 "line_items": [],
             }
         )
@@ -110,6 +173,14 @@ class DuplicateDetector:
         due_date: str | None = None,
         subtotal: float | None = None,
         tax: float | None = None,
+        discount_percentage: float | None = None,
+        discount_amount: float | None = None,
+        shipping_charges: float | None = None,
+        freight_charges: float | None = None,
+        handling_charges: float | None = None,
+        insurance_charges: float | None = None,
+        packaging_charges: float | None = None,
+        other_charges: list[dict[str, Any]] | None = None,
         grand_total: float | None = None,
     ) -> dict[str, Any]:
         invoice = self._coerce_invoice(
@@ -121,6 +192,14 @@ class DuplicateDetector:
             due_date=due_date,
             subtotal=subtotal,
             tax=tax,
+            discount_percentage=discount_percentage,
+            discount_amount=discount_amount,
+            shipping_charges=shipping_charges,
+            freight_charges=freight_charges,
+            handling_charges=handling_charges,
+            insurance_charges=insurance_charges,
+            packaging_charges=packaging_charges,
+            other_charges=other_charges,
             grand_total=grand_total,
         )
 
@@ -134,6 +213,8 @@ class DuplicateDetector:
             except ValueError:
                 parsed_invoice_date = None
 
+        invoice_grand_total = self._coerce_numeric(invoice.grand_total.value)
+
         for old in invoices:
             if old.invoice_number and old.invoice_number.casefold().strip() == str(invoice.invoice_number.value).casefold().strip():
                 return {
@@ -146,7 +227,7 @@ class DuplicateDetector:
             if (
                 not old.vendor_name
                 or old.grand_total is None
-                or invoice.grand_total.value is None
+                or invoice_grand_total is None
             ):
                 continue
 
@@ -160,7 +241,7 @@ class DuplicateDetector:
 
             try:
                 difference = abs(
-                    float(invoice.grand_total.value) - float(old.grand_total)
+                    float(invoice_grand_total) - float(old.grand_total)
                 )
             except (TypeError, ValueError):
                 continue
@@ -209,6 +290,14 @@ class DuplicateDetector:
         due_date: str | None = None,
         subtotal: float | None = None,
         tax: float | None = None,
+        discount_percentage: float | None = None,
+        discount_amount: float | None = None,
+        shipping_charges: float | None = None,
+        freight_charges: float | None = None,
+        handling_charges: float | None = None,
+        insurance_charges: float | None = None,
+        packaging_charges: float | None = None,
+        other_charges: list[dict[str, Any]] | None = None,
         grand_total: float | None = None,
         status: str = "Processed",
     ) -> dict[str, Any]:
@@ -221,6 +310,14 @@ class DuplicateDetector:
             due_date=due_date,
             subtotal=subtotal,
             tax=tax,
+            discount_percentage=discount_percentage,
+            discount_amount=discount_amount,
+            shipping_charges=shipping_charges,
+            freight_charges=freight_charges,
+            handling_charges=handling_charges,
+            insurance_charges=insurance_charges,
+            packaging_charges=packaging_charges,
+            other_charges=other_charges,
             grand_total=grand_total,
         )
 
@@ -234,13 +331,21 @@ class DuplicateDetector:
                 due_date=str(invoice.due_date.value)
                 if invoice.due_date.value is not None
                 else None,
-                subtotal=float(invoice.subtotal.value)
-                if invoice.subtotal.value is not None
+                subtotal=self._coerce_numeric(invoice.subtotal.value),
+                tax=self._coerce_numeric(invoice.tax.value),
+                discount_percentage=self._coerce_numeric(
+                    invoice.discount_percentage.value, allow_percent=True
+                ),
+                discount_amount=self._coerce_numeric(invoice.discount_amount.value),
+                shipping_charges=self._coerce_numeric(invoice.shipping_charges.value),
+                freight_charges=self._coerce_numeric(invoice.freight_charges.value),
+                handling_charges=self._coerce_numeric(invoice.handling_charges.value),
+                insurance_charges=self._coerce_numeric(invoice.insurance_charges.value),
+                packaging_charges=self._coerce_numeric(invoice.packaging_charges.value),
+                other_charges=[item.model_dump() for item in invoice.other_charges]
+                if invoice.other_charges
                 else None,
-                tax=float(invoice.tax.value) if invoice.tax.value is not None else None,
-                grand_total=float(invoice.grand_total.value)
-                if invoice.grand_total.value is not None
-                else None,
+                grand_total=self._coerce_numeric(invoice.grand_total.value),
                 status=status,
             )
             self.db.commit()

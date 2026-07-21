@@ -14,6 +14,20 @@ class ConfidenceField(BaseModel):
     confidence: float = Field(ge=0, le=1)
 
 
+def _confidence_payload(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict) and "value" in value:
+        confidence = value.get("confidence", 0.0)
+        return {
+            "value": value.get("value"),
+            "confidence": confidence if confidence is not None else 0.0,
+        }
+
+    return {
+        "value": value,
+        "confidence": 1.0 if value not in (None, "") else 0.0,
+    }
+
+
 class LineItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -30,16 +44,31 @@ class LineItem(BaseModel):
         if not isinstance(payload, dict):
             raise ValueError("Line item payload must be a mapping.")
 
-        converted = {}
+        converted: dict[str, Any] = {}
         for field_name in ("description", "quantity", "unit_price", "total"):
-            value = payload.get(field_name)
-            if isinstance(value, dict) and "value" in value:
-                converted[field_name] = value
-            else:
-                converted[field_name] = {
-                    "value": value,
-                    "confidence": 1.0 if value not in (None, "") else 0.0,
-                }
+            converted[field_name] = _confidence_payload(payload.get(field_name))
+
+        return cls.model_validate(converted)
+
+
+class ChargeItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    name: ConfidenceField
+    amount: ConfidenceField
+
+    @classmethod
+    def from_payload(cls, payload: Any) -> "ChargeItem":
+        if isinstance(payload, cls):
+            return payload
+
+        if not isinstance(payload, dict):
+            raise ValueError("Charge item payload must be a mapping.")
+
+        converted = {
+            "name": _confidence_payload(payload.get("name")),
+            "amount": _confidence_payload(payload.get("amount")),
+        }
 
         return cls.model_validate(converted)
 
@@ -56,12 +85,28 @@ class InvoiceData(BaseModel):
     subtotal: ConfidenceField
     tax: ConfidenceField
     grand_total: ConfidenceField
-    discount: ConfidenceField = Field(
+    discount_percentage: ConfidenceField = Field(
         default_factory=lambda: ConfidenceField(value=None, confidence=0.0)
     )
-    shipping: ConfidenceField = Field(
+    discount_amount: ConfidenceField = Field(
         default_factory=lambda: ConfidenceField(value=None, confidence=0.0)
     )
+    shipping_charges: ConfidenceField = Field(
+        default_factory=lambda: ConfidenceField(value=None, confidence=0.0)
+    )
+    freight_charges: ConfidenceField = Field(
+        default_factory=lambda: ConfidenceField(value=None, confidence=0.0)
+    )
+    handling_charges: ConfidenceField = Field(
+        default_factory=lambda: ConfidenceField(value=None, confidence=0.0)
+    )
+    insurance_charges: ConfidenceField = Field(
+        default_factory=lambda: ConfidenceField(value=None, confidence=0.0)
+    )
+    packaging_charges: ConfidenceField = Field(
+        default_factory=lambda: ConfidenceField(value=None, confidence=0.0)
+    )
+    other_charges: list[ChargeItem] = Field(default_factory=list)
     balance_due: ConfidenceField = Field(
         default_factory=lambda: ConfidenceField(value=None, confidence=0.0)
     )
@@ -98,6 +143,15 @@ class InvoiceData(BaseModel):
             return [LineItem.from_payload(item) for item in value]
         raise ValueError("line_items must be a list.")
 
+    @field_validator("other_charges", mode="before")
+    @classmethod
+    def _coerce_other_charges(cls, value: Any) -> list[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [ChargeItem.from_payload(item) for item in value]
+        raise ValueError("other_charges must be a list.")
+
     @classmethod
     def from_payload(cls, payload: Any) -> "InvoiceData":
         if isinstance(payload, cls):
@@ -105,6 +159,17 @@ class InvoiceData(BaseModel):
 
         if not isinstance(payload, dict):
             raise ValueError("Invoice payload must be a mapping.")
+
+        alias_map = {
+            "discount_percentage": ("discount_percentage",),
+            "discount_amount": ("discount_amount", "discount"),
+            "shipping_charges": ("shipping_charges", "shipping"),
+            "freight_charges": ("freight_charges",),
+            "handling_charges": ("handling_charges",),
+            "insurance_charges": ("insurance_charges",),
+            "packaging_charges": ("packaging_charges",),
+            "other_charges": ("other_charges",),
+        }
 
         converted: dict[str, Any] = {}
         for field_name in (
@@ -115,8 +180,13 @@ class InvoiceData(BaseModel):
             "subtotal",
             "tax",
             "grand_total",
-            "discount",
-            "shipping",
+            "discount_percentage",
+            "discount_amount",
+            "shipping_charges",
+            "freight_charges",
+            "handling_charges",
+            "insurance_charges",
+            "packaging_charges",
             "balance_due",
             "purchase_order",
             "order_id",
@@ -126,19 +196,26 @@ class InvoiceData(BaseModel):
             "ship_to",
             "invoice_type",
         ):
-            value = payload.get(field_name)
-            if isinstance(value, dict) and "value" in value and "confidence" in value:
-                converted[field_name] = value
-            else:
-                converted[field_name] = {
-                    "value": value,
-                    "confidence": 1.0 if value not in (None, "") else 0.0,
-                }
+            value = None
+            for candidate_key in alias_map.get(field_name, (field_name,)):
+                if candidate_key in payload:
+                    value = payload.get(candidate_key)
+                    break
+            converted[field_name] = _confidence_payload(value)
 
         converted["line_items"] = payload.get("line_items", [])
+        converted["other_charges"] = payload.get("other_charges", [])
 
         invoice = cls.model_validate(converted)
         return invoice.normalize_dates()
+
+    @property
+    def discount(self) -> ConfidenceField:
+        return self.discount_amount
+
+    @property
+    def shipping(self) -> ConfidenceField:
+        return self.shipping_charges
 
     def normalize_dates(self) -> "InvoiceData":
         for field_name in ("invoice_date", "due_date"):

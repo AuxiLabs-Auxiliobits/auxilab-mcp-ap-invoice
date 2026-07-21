@@ -2,27 +2,36 @@
 
 ## Overview
 
-**AP Invoice Intelligence** is an AI-powered Accounts Payable automation system built as an **MCP (Model Context Protocol) Server**.
+**AP Invoice Intelligence** is an AI-powered Accounts Payable automation system built using the **Model Context Protocol (MCP)**.
 
-The system automatically extracts invoice information using **Google Gemini AI**, validates invoice completeness, detects duplicate invoices, normalizes vendor names, calculates payment terms, and stores processed invoices in a local SQLite database.
+The application extracts invoice information from PDF/image/text/JSON invoices using a **local pdfplumber path for readable PDFs and text files**, plus a **configurable vision provider** for scanned documents when OCR is needed. It validates invoice completeness, detects duplicate invoices, normalizes vendor names, calculates payment terms, and stores processed invoices in a local SQLite database.
 
-All capabilities are exposed as MCP tools, allowing AI assistants such as Claude Desktop, Cursor, VS Code, and the MCP Inspector to invoke them directly.
+The latest extraction workflow now also captures detailed monetary adjustments on invoices, including discounts, shipping, freight, handling, insurance, packaging, tax/GST, and any additional named charges.
+
+All business operations are exposed as MCP tools that can be accessed from **Claude Desktop**, **Cursor**, **VS Code**, and the **MCP Inspector**.
+
+For a full breakdown of the server architecture, tools, libraries, and improvement ideas, see [MCP_SERVER_DOCUMENTATION.md](C:/Users/hp/Desktop/hackthon/MCP_SERVER_DOCUMENTATION.md).
 
 ---
 
 # Features
 
-* AI-powered Invoice Extraction using Google Gemini
-* PDF Text Extraction using pdfplumber
-* Automatic OCR fallback for scanned/image invoices using Gemini Vision
-* Structured Invoice JSON Output with Confidence Scores
-* Vendor Name Normalization
-* Duplicate Invoice Detection
-* Payment Terms Calculation
-* Invoice Completeness Validation
-* SQLite Database Storage
-* MCP Server exposing business tools
-* Compatible with MCP Inspector and MCP Clients
+* Local invoice extraction from readable PDFs and text files with no API key required
+* AI-powered OCR fallback for scanned/image invoices
+* Structured extraction of invoice header fields, totals, and line items
+* Detailed monetary adjustment extraction
+* Tax/GST extraction without assuming zero when other charges exist
+* Discount extraction with both percentage and amount when explicitly shown
+* Shipping, freight, handling, insurance, and packaging charge extraction
+* Additional charge extraction as a named list of charge items
+* Confidence scores preserved for every extracted field
+* Vendor name normalization
+* Duplicate invoice detection
+* Payment terms calculation
+* Invoice completeness validation
+* SQLite database storage
+* FastMCP server integration
+* Configurable vision provider support for Gemini, Anthropic, or OpenAI
 
 ---
 
@@ -30,24 +39,30 @@ All capabilities are exposed as MCP tools, allowing AI assistants such as Claude
 
 ## Backend
 
-* Python 3.12
+* Python 3.12+
 * FastMCP
-* Google Gemini API
 * SQLAlchemy
 * SQLite
 
 ## AI
 
-* Gemini 2.5 Flash
-* Gemini Vision
+* pdfplumber for local text extraction
+* Optional vision providers: Gemini, Anthropic, or OpenAI
+
+## Input Resolution
+
+* Local file paths
+* `file://` URIs
+* HTTP/HTTPS URLs
+* Uploaded file payloads
+* Base64 PDF/image data
+* Raw PDF/image bytes
+* Invoice text
+* Invoice JSON payloads
 
 ## PDF Processing
 
 * pdfplumber
-
-## Database
-
-* SQLite
 
 ## Utilities
 
@@ -57,36 +72,36 @@ All capabilities are exposed as MCP tools, allowing AI assistants such as Claude
 
 ---
 
+# Prerequisites
+
+Install the following before running the project:
+
+* Python 3.12 or later
+* Git
+* VS Code (recommended)
+
+Verify Python installation:
+
+```bash
+python --version
+```
+
+---
+
 # Project Structure
 
-```
+```text
 hackthon/
 
 │
 ├── app/
 │   ├── database/
-│   │   ├── database.py
-│   │   ├── models.py
-│   │   └── seed.py
-│   │
 │   ├── schemas/
-│   │   └── invoice.py
-│   │
 │   ├── services/
-│   │   ├── gemini_service.py
-│   │   ├── invoice_processor.py
-│   │   └── pdf_parser.py
-│   │
 │   ├── tools/
-│   │   ├── duplicate_detector.py
-│   │   ├── vendor_normalizer.py
-│   │   ├── payment_terms.py
-│   │   └── completeness_checker.py
-│   │
 │   └── config.py
 │
 ├── tests/
-│
 ├── sample_invoice.pdf
 ├── vendor_master.db
 ├── main.py
@@ -97,65 +112,12 @@ hackthon/
 
 ---
 
-# System Workflow
-
-```
-Invoice PDF / Image
-
-        │
-
-        ▼
-
-PDF Parser (pdfplumber)
-
-        │
-
-        ▼
-
-Gemini AI Extraction
-
-        │
-
-        ▼
-
-Structured Invoice JSON
-
-        │
-
- ┌──────────────┬──────────────┬──────────────┐
- ▼              ▼              ▼              ▼
-
-Vendor      Duplicate     Payment Terms   Completeness
-Normalize    Detection      Calculation     Checker
-
-        │
-
-        ▼
-
-SQLite Database
-
-        │
-
-        ▼
-
-FastMCP Server
-
-        │
-
-        ▼
-
-Claude / Cursor / VS Code / MCP Inspector
-```
-
----
-
 # Installation
 
 ## 1. Clone Repository
 
 ```bash
 git clone <repository-url>
-
 cd hackthon
 ```
 
@@ -167,122 +129,226 @@ Windows
 
 ```bash
 python -m venv venv
-
-venv\Scripts\activate
 ```
 
-Linux / macOS
+Linux/macOS
 
 ```bash
 python3 -m venv venv
+```
 
+---
+
+## 3. Activate Virtual Environment
+
+### Windows PowerShell
+
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+
+### Windows Command Prompt
+
+```cmd
+venv\Scripts\activate
+```
+
+### Linux/macOS
+
+```bash
 source venv/bin/activate
 ```
 
 ---
 
-## 3. Install Dependencies
+## 4. Upgrade pip
 
 ```bash
-pip install -r requirements.txt
+python -m pip install --upgrade pip
 ```
 
 ---
 
-## 4. Create Environment File
+## 5. Install Project Dependencies
 
-Create a file named
-
-```
-.env
+```bash
+python -m pip install -r requirements.txt
 ```
 
-Add
+> **Note**
+>
+> Always use:
+>
+> ```bash
+> python -m pip
+> ```
+>
+> instead of `pip` to avoid launcher issues on Windows.
 
-```
-GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+---
+
+## 6. Install Optional Vision SDKs
+
+You only need these if you want OCR for scanned PDFs or images.
+
+```bash
+python -m pip install google-genai anthropic openai
 ```
 
 ---
 
-## 5. Seed Vendor Database
+## 7. Install MCP CLI
+
+The MCP Inspector requires the CLI dependencies.
+
+```bash
+python -m pip install "mcp[cli]"
+```
+
+---
+
+## 8. Configure Environment Variables
+
+Create a `.env` file in the project root.
+
+```text
+VISION_PROVIDER=
+GEMINI_API_KEY=
+ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
+```
+
+Leave `VISION_PROVIDER` blank for local-only extraction. Set it to `gemini`, `anthropic`, or `openai` when you want OCR fallback.
+
+---
+
+## 9. Seed the Database
+
+Run the seed script as a Python module.
+
+```bash
+python -m app.database.seed
+```
+
+Do **not** run:
 
 ```bash
 python app/database/seed.py
 ```
 
+Expected output:
+
+```text
+Vendor database already seeded.
+```
+
+or
+
+```text
+Vendor database seeded successfully.
+```
+
 ---
 
-# Running the MCP Server
+# Running the Server
 
-Start the server
+Start the MCP server:
 
 ```bash
 python main.py
 ```
 
-or
-
-```bash
-python -m main
-```
-
 ---
 
-# Running with MCP Inspector
+# Running the MCP Inspector
 
-Activate the virtual environment
+Open a second terminal.
+
+Activate the virtual environment.
 
 ```bash
 venv\Scripts\activate
 ```
 
-Start Inspector
+Launch the inspector.
 
 ```bash
 mcp dev main.py
 ```
 
-The Inspector opens automatically in your browser.
+When prompted, connect using:
 
-Connect using
+Command
 
-```
-Command:
+```text
 python
+```
 
-Arguments:
+Arguments
+
+```text
 main.py
 ```
 
-Click **Connect** to access all MCP tools.
+Click **Connect**.
 
 ---
 
 # Available MCP Tools
 
-## 1. extract_invoice
+### extract_invoice
 
-Extract invoice information from PDF or image.
+Extract invoice information from invoice files or structured payloads.
 
-Input
-
-```
-sample_invoice.pdf
-```
-
-Returns
+Returns:
 
 * Invoice Number
-* Vendor
-* Dates
-* Totals
+* Vendor Name
+* Invoice Date
+* Due Date
+* Subtotal
+* Tax / GST
+* Discount Percentage
+* Discount Amount
+* Shipping Charges
+* Freight Charges
+* Handling Charges
+* Insurance Charges
+* Packaging Charges
+* Other Charges
+* Grand Total
 * Line Items
-* Duplicate Detection
+* Confidence Scores
 
 ---
 
-## 2. normalize_vendor
+### process_invoice
+
+Runs the full invoice pipeline.
+
+Performs:
+
+* Input resolution
+* Gemini extraction
+* Vendor normalization
+* Duplicate detection
+* Payment terms calculation
+* Completeness validation
+* Invoice persistence
+
+Returns:
+
+* Extracted invoice JSON
+* Normalized vendor result
+* Duplicate check result
+* Payment terms result
+* Completeness result
+* Save result
+* Step-by-step pipeline status
+
+---
+
+### normalize_vendor
 
 Normalizes vendor names against the Vendor Master.
 
@@ -300,26 +366,18 @@ Microsoft Corporation
 
 ---
 
-## 3. detect_duplicate
+### detect_duplicate
 
-Detects duplicate invoices using invoice number, vendor, amount, and invoice date.
+Detects duplicate invoices using
 
-Returns
-
-* Duplicate Status
-* Match Type
-* Confidence
+* Vendor
+* Invoice Number
+* Amount
+* Invoice Date
 
 ---
 
-## 4. calculate_payment_terms
-
-Calculates
-
-* Due Date
-* Discount Deadline
-* Early Payment Discount
-* Days Until Due
+### calculate_payment_terms
 
 Supports
 
@@ -330,11 +388,15 @@ Supports
 * 2/10 Net 30
 * 1/15 Net 45
 
+Returns
+
+* Due Date
+* Discount Deadline
+* Days Until Due
+
 ---
 
-## 5. check_completeness
-
-Checks invoice completeness.
+### check_completeness
 
 Returns
 
@@ -344,101 +406,114 @@ Returns
 
 ---
 
-# Database
+### list_pending_vendors
 
-SQLite stores
+Lists vendors waiting for approval.
 
-* Processed Invoices
-* Vendor Master
+---
 
-No external database installation is required.
+### approve_vendor
+
+Approves a pending vendor and moves it into vendor master.
+
+---
+
+### reject_vendor
+
+Rejects and removes a pending vendor.
 
 ---
 
 # Sample Workflow
 
-1. Upload Invoice PDF
-
-↓
-
-2. Extract Text
-
-↓
-
-3. Gemini AI extracts structured data
-
-↓
-
-4. Vendor Normalization
-
-↓
-
-5. Duplicate Detection
-
-↓
-
-6. Payment Terms Calculation
-
-↓
-
-7. Completeness Validation
-
-↓
-
-8. Save Invoice
-
-↓
-
-9. Return JSON Response
+1. Upload Invoice PDF or text invoice
+2. Readable PDFs and text files are parsed locally with `pdfplumber`
+3. If the document is scanned, the configured vision provider performs OCR
+4. Structured data is extracted, including discounts and charge adjustments
+5. Normalize Vendor
+6. Detect Duplicates
+7. Calculate Payment Terms
+8. Validate Completeness
+9. Save to SQLite
+10. Return JSON Response
 
 ---
 
-# Example Output
+# Troubleshooting
 
-```json
-{
-    "invoice_number": {
-        "value": "INV-3337",
-        "confidence": 0.99
-    },
-    "vendor_name": {
-        "value": "Microsoft Corporation",
-        "confidence": 0.99
-    },
-    "grand_total": {
-        "value": 1180.0,
-        "confidence": 0.99
-    }
-}
+## No module named 'app'
+
+Use
+
+```bash
+python -m app.database.seed
 ```
+
+instead of
+
+```bash
+python app/database/seed.py
+```
+
+---
+
+## No vision provider configured
+
+Readable PDFs and text files still work locally.
+
+If you pass a scanned PDF or image, set `VISION_PROVIDER` and the matching API key for the provider you want to use.
+
+---
+
+## Error: typer is required
+
+Install the MCP CLI.
+
+```bash
+python -m pip install "mcp[cli]"
+```
+
+---
+
+## pip launcher error after moving the project
+
+If you moved the project folder, delete the existing `venv` directory and recreate it.
+
+```bash
+python -m venv venv
+```
+
+Then reinstall all dependencies.
+
+---
+
+## Invalid Gemini API Key
+
+Verify that your `.env` file contains:
+
+```text
+VISION_PROVIDER=gemini
+GEMINI_API_KEY=YOUR_API_KEY
+```
+
+Restart the server after updating the key.
 
 ---
 
 # Future Improvements
 
-* OCR using PaddleOCR/Tesseract
+* PaddleOCR/Tesseract Integration
 * Fraud Detection
-* GST Validation
 * Invoice Approval Workflow
-* Multi-language Invoice Support
-* PostgreSQL / MySQL Support
-* Vendor Embedding Search
-* REST API Integration
-* Docker Deployment
+* REST API
+* Docker Support
+* PostgreSQL/MySQL
 * Cloud Storage Integration
 
 ---
 
 # License
 
-This project was developed for educational and hackathon purposes.
+Developed for educational and hackathon purposes.
 
 ---
-
-# Author
-
-**Ashish Sharma**
-
-Backend Developer
-
-Built with Python, Gemini AI, SQLAlchemy, SQLite, FastMCP, and RapidFuzz.

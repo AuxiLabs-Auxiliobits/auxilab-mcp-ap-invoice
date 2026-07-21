@@ -22,6 +22,11 @@ if not DATABASE_PATH.is_absolute():
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip() or None
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+VISION_PROVIDER = os.getenv("VISION_PROVIDER", "").strip().lower() or None
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip() or None
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-latest")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip() or None
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 VENDOR_NORMALIZER_THRESHOLD = float(

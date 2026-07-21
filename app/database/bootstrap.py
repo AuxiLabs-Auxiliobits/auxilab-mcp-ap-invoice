@@ -18,6 +18,26 @@ def initialize_database() -> None:
         Base.metadata.create_all(bind=engine)
 
         with engine.begin() as connection:
+            existing_columns = {
+                row[1]
+                for row in connection.execute(text("PRAGMA table_info(processed_invoices)"))
+            }
+            for column_name, column_sql in (
+                ("discount_percentage", "FLOAT"),
+                ("shipping_charges", "FLOAT"),
+                ("freight_charges", "FLOAT"),
+                ("handling_charges", "FLOAT"),
+                ("insurance_charges", "FLOAT"),
+                ("packaging_charges", "FLOAT"),
+                ("other_charges_json", "TEXT"),
+            ):
+                if column_name not in existing_columns:
+                    connection.execute(
+                        text(
+                            f"ALTER TABLE processed_invoices ADD COLUMN {column_name} {column_sql}"
+                        )
+                    )
+
             connection.execute(
                 text(
                     "CREATE UNIQUE INDEX IF NOT EXISTS ux_vendors_vendor_name_nocase "
@@ -53,4 +73,3 @@ def initialize_database() -> None:
     except SQLAlchemyError:
         logger.exception("Database initialization failed")
         raise
-

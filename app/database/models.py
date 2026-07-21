@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Float, Integer, String
+from sqlalchemy import Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.database import Base
@@ -42,5 +42,13 @@ class ProcessedInvoice(Base):
     due_date: Mapped[str | None] = mapped_column(String, nullable=True)
     subtotal: Mapped[float | None] = mapped_column(Float, nullable=True)
     tax: Mapped[float | None] = mapped_column(Float, nullable=True)
+    discount_percentage: Mapped[float | None] = mapped_column(Float, nullable=True)
+    discount_amount: Mapped[float | None] = mapped_column("discount", Float, nullable=True)
+    shipping_charges: Mapped[float | None] = mapped_column(Float, nullable=True)
+    freight_charges: Mapped[float | None] = mapped_column(Float, nullable=True)
+    handling_charges: Mapped[float | None] = mapped_column(Float, nullable=True)
+    insurance_charges: Mapped[float | None] = mapped_column(Float, nullable=True)
+    packaging_charges: Mapped[float | None] = mapped_column(Float, nullable=True)
+    other_charges_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     grand_total: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String, default="Processed")
