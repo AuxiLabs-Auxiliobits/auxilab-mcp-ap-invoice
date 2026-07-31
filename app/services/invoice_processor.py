@@ -16,10 +16,10 @@ class InvoiceProcessor:
 
         print("Extracting Invoice...")
 
-        # GeminiService automatically decides:
-        # PDF with text -> pdfplumber
-        # Scanned PDF -> Gemini Vision
-        # Image -> Gemini Vision
+        # The extraction service automatically decides:
+        # PDF with selectable text -> LocalInvoiceExtractor
+        # Scanned PDF -> configured vision provider
+        # Image -> configured vision provider
         invoice = self.gemini.extract_invoice(file_path)
 
         print("Checking Duplicate...")

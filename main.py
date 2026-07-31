@@ -1,12 +1,16 @@
 from mcp.server.fastmcp import FastMCP
 
 from app.database.database import SessionLocal
+from app.database.seed import seed_vendors
 from app.services.invoice_processor import InvoiceProcessor
 from app.tools.vendor_normalizer import VendorNormalizer
 from app.tools.duplicate_detector import DuplicateDetector
 from app.tools.payment_terms import PaymentTermsCalculator
 from app.tools.completeness_checker import CompletenessChecker
 from app.schemas.invoice import InvoiceData, ConfidenceField
+
+
+seed_vendors()
 
 
 mcp = FastMCP(

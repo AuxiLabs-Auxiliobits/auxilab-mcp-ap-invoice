@@ -13,7 +13,7 @@ def seed_vendors():
 
     # Don't insert data again if vendors already exist
     if db.query(Vendor).count() > 0:
-        print("✅ Vendor database already seeded.")
+        print("Vendor database already seeded.")
         db.close()
         return
 
@@ -90,7 +90,7 @@ def seed_vendors():
     db.add_all(vendors)
     db.commit()
 
-    print(f"✅ Inserted {len(vendors)} vendors successfully.")
+    print(f"Inserted {len(vendors)} vendors successfully.")
 
     db.close()
 
