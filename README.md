@@ -293,3 +293,15 @@ Full docs live in [`docs/`](./docs):
 ## License
 
 [MIT](./LICENSE).
+
+
+---
+
+## Built By
+
+| Name | GitHub |
+|------|--------|
+| Harshit Mishra | [@harryisnomore](https://github.com/harryisnomore) |
+| Shashank Pandey | [@shashank-auxiliobits](https://github.com/shashank-auxiliobits) |
+
+Built during the **AuxiLab Founding Hackathon** by [Auxiliobits Technologies](https://auxiliobits.com) · [AuxiLab Catalogue](https://auxiliobits.com/auxilab)
